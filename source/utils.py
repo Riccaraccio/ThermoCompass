@@ -25,3 +25,27 @@ def convert_species_name(species_name: str, model) -> str:
 
     # If no conversion is needed, return the original name
     return species_name
+
+
+def convert_comp_dict(comp_dict: dict, model: str) -> dict:
+    """Convert the keys of a composition dictionary based on the model."""
+    # if TANN or TGL are present, they need to be removed and composition re-normalized
+    renormalize = False
+    if ("TANN" in comp_dict or "TGL" in comp_dict) and model == "Polimi_1402":
+        renormalize = True
+        if "TANN" in comp_dict:
+            comp_dict.pop("TANN")
+        if "TGL" in comp_dict:
+            comp_dict.pop("TGL")
+
+    converted_dict = {}
+    for species, fraction in comp_dict.items():
+        converted_name = convert_species_name(species, model)
+        converted_dict[converted_name] = fraction
+
+    if renormalize:
+        total_fraction = sum(converted_dict.values())
+        for species in converted_dict:
+            converted_dict[species] /= total_fraction
+
+    return converted_dict
