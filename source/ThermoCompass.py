@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 # Project imports
-from utils import from_comp_dict_to_str, replace_line, convert_species_name
+from utils import *
 
 # Define molecular weights for common elements (in g/mol)
 C_MW = 12.01099968
@@ -92,7 +92,7 @@ class ThermoCompass:
 
         print("Kinetic model loaded successfully.\n")
 
-    def plot_results(self, models_to_plot: list = None, title: str = "Simulation Results"):
+    def plot_heat_released(self, models_to_plot: list = None, title: str = "Simulation Results"):
         """Plot the simulation results."""
         print(f"\nPlotting simulation results: {title}...")
         if models_to_plot is None:  # plot all models by default
@@ -101,7 +101,7 @@ class ThermoCompass:
             ]
 
         # Ax[0]: Solid Mass over time, Ax[1]: Heat Released over time
-        fig, ax = plt.subplots(1, 2, figsize=(14, 6))
+        fig, ax = plt.subplots(1, 2, figsize=(14, 6), layout="constrained")
         for model in models_to_plot:
             output_folder = f"simulations/output-{model}"
             results_file = f"{output_folder}/Output.out"
@@ -117,15 +117,15 @@ class ThermoCompass:
             time = results_df["t[s](1)"]
             total_solid_mass = results_df["Ms/Ms0[-](3)"]
             heat_released = results_df["Qr[W/m3](5)"]
-            integral_heat_released = (
-                np.trapz(heat_released * total_solid_mass, time) * 1e-3
+            integral_heat_released = np.trapz(
+                heat_released * total_solid_mass * 1e-3, time
             )  # in kJ
 
             ax[0].plot(time, total_solid_mass, label=model)
             ax[1].plot(
                 time,
-                heat_released * total_solid_mass,
-                label=f"{model} (Integral: {integral_heat_released:.2e} kJ)",
+                heat_released * total_solid_mass * 1e-3,  # convert to kW
+                label=f"{model}\n(Integral: {integral_heat_released:.2e} kJ)",
             )
 
         ax[0].set_xlabel("Time (s)")
@@ -133,11 +133,12 @@ class ThermoCompass:
         ax[0].set_title("Solid Mass Over Time")
         ax[0].legend()
         ax[0].grid()
+        ax[0].set_ylim(bottom=0, top=1.1)
 
         ax[1].set_xlabel("Time (s)")
-        ax[1].set_ylabel("Heat Released (W)")
+        ax[1].set_ylabel("Heat Released (kW)")
         ax[1].set_title("Heat Released Over Time")
-        ax[1].legend()
+        ax[1].legend(bbox_to_anchor=(1.05, 1), loc="upper left")
         ax[1].grid()
 
         plt.suptitle(title)
@@ -171,17 +172,9 @@ class ThermoCompass:
             model_path = f"kinetics/{model}"
             # replace solid composition in the input file
 
+            # Convert solid composition dict to the appropriate names for the model
             solid_composition_modified = solid_composition.copy()
-            # Older model have differen solid species names
-            if model in ["Polimi_1402", "Polimi_1805"] and "MOIST" in solid_composition_modified:
-                solid_composition_modified["ACQUA"] = solid_composition_modified.pop("MOIST")
-            if model == "Polimi_1402":
-                if "XYHW" in solid_composition_modified:
-                    solid_composition_modified["HCE"] = solid_composition_modified.pop("XYHW")
-                if "GMSW" in solid_composition_modified:
-                    solid_composition_modified["HCE"] = solid_composition_modified.pop("GMSW")
-                if "XYGR" in solid_composition_modified:
-                    solid_composition_modified["HCE"] = solid_composition_modified.pop("XYGR")
+            solid_composition_modified = convert_comp_dict(solid_composition_modified, model)
 
             replace_line(
                 inputfile_path,
@@ -207,7 +200,7 @@ class ThermoCompass:
             os.system(f"{PATH_TO_BIOSMOKE} --input {inputfile_path} > /dev/null")
 
         if plot_results:
-            self.plot_results(
+            self.plot_heat_released(
                 models_to_plot=models_to_run, title=from_comp_dict_to_str(solid_composition)
             )
 
@@ -410,22 +403,40 @@ class ThermoCompass:
 
 
 if __name__ == "__main__":
+
+    corbetta_composition = {
+        "CELL": 0.4807,
+        "XYHW": 0.2611,
+        "LIGO": 0.1325,
+        "LIGH": 0.0957,
+        "LIGC": 0.0214,
+        "ASH": 0.0086,
+    }
+
+    panahi_composition = {
+        "CELL": 0.4832,
+        "XYHW": 0.1200,
+        "LIGO": 0.1652,
+        "LIGH": 0.0003,
+        "LIGC": 0.0000,
+        "TANN": 0.1668,
+        "TGL": 0.0005,
+        "ASH": 0.0190,
+        "MOIST": 0.0450,
+    }
+
     tc = ThermoCompass()
     # tc.load_atomic_matrix()
 
-    tc.plot_entalpy(species_name="CELL")
-
-    exit()
+    # tc.plot_entalpy(species_name="LIGO", T_max=1500)
+    # exit()
 
     # Composition provided in the latest kinetic model solid species names
-    # Conversions handeled:
-    # if model == "Polimi_1402":
-    #   MOIST -> ACQUA, XYHW/GMSW/XYGR -> HCE
-    # if model == "Polimi_1805":
-    #   MOIST -> ACQUA
+    # Conversion will be handled inside the run_simulation method
     tc.run_simulation(
-        keep_results=False,
+        keep_results=True,
         # models_to_run=["Polimi_2601", "Polimi_2401"],
-        solid_composition={"CHAR": 0.9, "ASH": 0.1},
+        solid_composition=corbetta_composition,
+        # solid_composition={"LIGO": 1.0},
         plot_results=True,
     )
