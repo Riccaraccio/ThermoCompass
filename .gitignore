@@ -1,3 +1,4 @@
 kinetics/**/kinetics-compiled/*
 plots/**/*
 simulations/**/*
+**/__pycache__/
