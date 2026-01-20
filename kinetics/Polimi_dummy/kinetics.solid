@@ -1,0 +1,24 @@
+MATERIAL BIOMASS
+
+SOLID
+MOIST BIOMASS CHAR ASH
+END
+
+REACTIONS
+!TAR FORMATION
+BIOMASS=>0.8TAR + 1H2O + 1.2CHAR        1.500E+14  0.000  47000.0
+
+!CHAR CONVERSION
+CHAR + O2 => CO2                        2.860E+10  0.000  26250.0
+
+CHAR + 0.5 O2 => CO                     1.280E+11  0.000  31223.0
+FORD / O2 0.78 /
+
+CHAR + CO2 => 2 CO                      2.000E+13  0.000  60000.0
+
+!MOISTURE EVAPORATION
+MOIST => H2O                            1.000E+00  1.000   8000.0
+
+H2O => MOIST                            5.874E-06  2.000   -835.49
+
+END

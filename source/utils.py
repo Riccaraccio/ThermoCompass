@@ -38,6 +38,15 @@ def convert_comp_dict(comp_dict: dict, model: str) -> dict:
         if "TGL" in comp_dict:
             comp_dict.pop("TGL")
 
+    # Special handling for Polimi_dummy model
+    if (model == "Polimi_dummy"):
+        biomass_fraction = 0.0
+        for species in list(comp_dict.keys()):
+            # exclude CHAR, ASH, MOIST from biomass fraction
+            if species not in ["CHAR", "ASH", "MOIST"]:
+                biomass_fraction += comp_dict.pop(species)
+        return {"BIOMASS": biomass_fraction, **comp_dict}
+
     converted_dict = {}
     for species, fraction in comp_dict.items():
         converted_name = convert_species_name(species, model)
